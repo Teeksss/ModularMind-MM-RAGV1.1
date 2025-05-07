@@ -1,0 +1,102 @@
+# ModularMind MM-RAG Configuration
+# Kopyalayıp config.yaml olarak kullanın ve gereken değerleri değiştirin
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  environment: production  # production, development, testing
+  debug: false
+  log_level: INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+security:
+  secret_key: "change_this_to_a_secure_random_string"  # En az 32 karakter uzunluğunda güvenli bir rastgele dize
+  access_token_expire_minutes: 30
+  refresh_token_expire_days: 30
+  password_min_length: 8
+  cors_origins:
+    - "http://localhost:3000"
+    - "https://your-domain.com"
+
+database:
+  db_url: "postgresql://postgres:postgres@localhost:5432/modularmind"
+  max_connections: 20
+  min_connections: 5
+  echo: false
+
+redis:
+  redis_host: localhost
+  redis_port: 6379
+  redis_password: null  # null için şifre yok
+  redis_db: 0
+
+vector_store:
+  vector_db_type: "qdrant"  # qdrant, faiss, milvus
+  vector_db_url: "http://localhost:6333"
+  vector_db_api_key: null  # API anahtarı gerekiyorsa
+  collection_name: "modularmind"
+  vector_dimension: 1536
+  similarity_type: "cosine"  # cosine, dot, euclidean
+
+llm:
+  llm_provider: "openai"  # openai, mistral, anthropic, local
+  llm_model: "gpt-4-turbo"  # modelinize göre ayarlayın
+  llm_api_key: "your_api_key_here"  # LLM sağlayıcınızın API anahtarını girin
+  local_llm_server: null  # Yerel bir model çalıştırıyorsanız "http://localhost:8080" gibi
+  local_llm_model_id: null  # Yerel model ID'si
+  temperature: 0.0
+  max_tokens: 2048
+  timeout: 30
+
+embeddings:
+  embedding_model: "text-embedding-3-large"  # text-embedding-ada-002 veya başka bir model
+  embedding_dimension: 1536
+  use_cache: true
+  cache_ttl: 86400  # 1 gün (saniye)
+
+agents:
+  agents_enabled: true
+  active_agents:  # Etkinleştirmek istediğiniz ajanları listeleyin
+    - "MetadataExtractorAgent"
+    - "SummarizationAgent"
+    - "SemanticExpanderAgent"
+    - "ContextualTaggerAgent"
+    - "RelationBuilderAgent"
+    - "SyntheticQAGeneratorAgent"
+  timeout_seconds: 30
+  retry_attempts: 3
+  concurrency: 4  # Maksimum paralel ajan sayısı
+
+enrichment:
+  enrichment_enabled: true
+  synthetic_qa_enabled: true
+  synthetic_qa_questions_per_document: 10
+  synthetic_qa_diversity_factor: 0.3  # 0 ile 1 arası (0: çeşitlilik yok, 1: maksimum çeşitlilik)
+  entity_masking_enabled: false
+
+multilingual:
+  default_language: "tr"  # Varsayılan dil kodu (en, tr, de, fr, ...)
+  supported_languages:  # Desteklenen dil kodları
+    - "en"
+    - "tr"
+    - "de"
+    - "fr"
+  translation_enabled: false
+  translation_model: null  # Özel çeviri modeli
+
+retrieval:
+  retrieval_type: "hybrid"  # dense, sparse, hybrid
+  top_k: 5  # Her sorgu için en iyi k sonucu getir
+  reranking_enabled: false
+  similarity_threshold: 0.7  # 0 ile 1 arası (0: en düşük benzerlik, 1: tam eşleşme)
+  include_metadata: true
+
+memory:
+  memory_enabled: true
+  memory_max_history_items: 20
+  memory_ttl_seconds: 604800  # 7 gün (saniye)
+
+metrics:
+  metrics_enabled: true
+  log_request_body: false
+  log_response_body: false
+  prometheus_enabled: true

@@ -1,0 +1,176 @@
+# Default values for ModularMind MM-RAG
+# This is a YAML-formatted file.
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  environment: production
+  imageRegistry: ""
+  imageTag: latest
+  imagePullSecrets: []
+  storageClass: ""
+
+backend:
+  replicaCount: 2
+  image:
+    repository: modularmind/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  config:
+    server:
+      host: 0.0.0.0
+      port: 8000
+      debug: false
+      logLevel: INFO
+      environment: production
+    
+    security:
+      secretKey: ""  # Will be generated if empty
+      accessTokenExpireMinutes: 1440
+      corsOrigins:
+        - https://app.modularmind.com
+    
+    llm:
+      provider: openai
+      apiKey: ""  # Should be set via secrets
+      model: gpt-4
+      temperature: 0.0
+      maxTokens: 4096
+    
+    agents:
+      active:
+        - MetadataExtractorAgent
+        - SummarizationAgent
+        - ContextualTaggerAgent
+        - RelationBuilderAgent
+        - SyntheticQAGeneratorAgent
+      timeoutSeconds: 30
+      retryAttempts: 3
+      concurrency: 4
+    
+    enrichment:
+      enabled: true
+      syntheticQA:
+        enabled: true
+        questionsPerDocument: 10
+      entityMasking:
+        enabled: true
+    
+    multilingual:
+      defaultLanguage: tr
+      supported:
+        - tr
+        - en
+        - de
+        - fr
+      translationEnabled: true
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: modularmind/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  config:
+    apiBaseUrl: /api/v1
+    environment: production
+
+postgresql:
+  enabled: true
+  auth:
+    username: modularmind
+    password: ""  # Will be auto-generated if not provided
+    database: modularmind_db
+  primary:
+    persistence:
+      size: 10Gi
+
+redis:
+  enabled: true
+  auth:
+    password: ""  # Will be auto-generated if not provided
+  master:
+    persistence:
+      size: 5Gi
+
+qdrant:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    size: 20Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: app.modularmind.com
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service: frontend
+        - path: /api
+          pathType: Prefix
+          backend:
+            service: backend
+  tls:
+    - secretName: modularmind-tls
+      hosts:
+        - app.modularmind.com
+
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+    dashboards:
+      - name: system-monitoring
+        file: dashboards/system-monitoring.json
+      - name: llm-performance
+        file: dashboards/llm-performance.json
+      - name: agent-monitoring
+        file: dashboards/agent-monitoring.json

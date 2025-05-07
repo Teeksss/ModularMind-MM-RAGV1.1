@@ -1,0 +1,83 @@
+groups:
+  - name: app_alerts
+    rules:
+      - alert: APIHighRequestRate
+        expr: sum(rate(embedding_api_requests_total[5m])) > 100
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API request rate"
+          description: "API is experiencing high request rate ({{ $value }} requests per second)."
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, sum(rate(embedding_api_request_latency_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API latency is high"
+          description: "95th percentile API latency is above 1 second ({{ $value }}s)."
+
+      - alert: EmbeddingModelFailure
+        expr: sum(increase(embedding_model_load_error_total[15m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Embedding model load failures"
+          description: "At least one embedding model failed to load in the last 15 minutes."
+
+      - alert: HighGPUUsage
+        expr: nvidia_gpu_utilization > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU usage"
+          description: "GPU utilization is above 90% for more than 10 minutes ({{ $value }}%)."
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 85% for more than 5 minutes ({{ $value }}%)."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 90% for more than 5 minutes ({{ $value }}%)."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is above 85% for more than 5 minutes ({{ $value }}%)."
+
+      - alert: TooManyConcurrentRequests
+        expr: embedding_concurrent_requests > 15
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many concurrent requests"
+          description: "Number of concurrent requests is above 15 for more than 2 minutes ({{ $value }})."
+
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute."

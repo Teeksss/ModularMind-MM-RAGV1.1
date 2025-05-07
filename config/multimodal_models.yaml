@@ -1,0 +1,46 @@
+models:
+  - name: openai-clip-vit-base-patch32
+    model_id: openai/clip-vit-base-patch32
+    model_type: clip
+    image_dimension: 512
+    device: cuda:0
+    max_sequence_length: 77
+    max_image_size: [224, 224]
+    description: "OpenAI CLIP ViT-B/32 model for image and text embedding"
+    version: "1.0"
+    is_default: true
+
+  - name: openai-clip-vit-large-patch14
+    model_id: openai/clip-vit-large-patch14
+    model_type: clip
+    image_dimension: 768
+    device: cuda:0
+    max_sequence_length: 77
+    max_image_size: [224, 224]
+    description: "OpenAI CLIP ViT-L/14 model for image and text embedding (higher quality)"
+    version: "1.0"
+    is_default: false
+    
+  - name: flava-full
+    model_id: facebook/flava-full
+    model_type: flava
+    image_dimension: 768
+    text_dimension: 768
+    device: cuda:0
+    max_sequence_length: 256
+    max_image_size: [224, 224]
+    description: "Facebook FLAVA multimodal model"
+    version: "1.0"
+    is_default: false
+    
+  - name: blip-base
+    model_id: Salesforce/blip-image-captioning-base
+    model_type: blip
+    image_dimension: 768
+    text_dimension: 768
+    device: cuda:0
+    max_sequence_length: 128
+    max_image_size: [384, 384]
+    description: "Salesforce BLIP model for image captioning and multimodal tasks"
+    version: "1.0"
+    is_default: false

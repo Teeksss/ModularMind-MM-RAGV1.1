@@ -1,0 +1,111 @@
+models:
+  - name: all-MiniLM-L6-v2
+    model_id: sentence-transformers/all-MiniLM-L6-v2
+    model_type: sentence_transformer
+    dimension: 384
+    device: cuda:0
+    max_sequence_length: 256
+    normalize_embeddings: true
+    is_default: true
+    description: General purpose English sentence embedding model
+    language: en
+    version: 1.0
+
+  - name: paraphrase-multilingual-MiniLM-L12-v2
+    model_id: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    model_type: sentence_transformer
+    dimension: 384
+    device: cuda:0
+    max_sequence_length: 256
+    normalize_embeddings: true
+    description: Multilingual embedding model supporting 50+ languages
+    language: multilingual
+    version: 1.0
+
+  - name: text-embedding-3-small
+    model_id: sentence-transformers/text-embedding-3-small
+    model_type: sentence_transformer
+    dimension: 512
+    device: cuda:0
+    max_sequence_length: 512
+    normalize_embeddings: true
+    description: OpenAI's text-embedding-3-small compatible model
+    language: en
+    version: 1.0
+
+  - name: e5-large-v2
+    model_id: intfloat/e5-large-v2
+    model_type: sentence_transformer
+    dimension: 1024
+    device: cuda:0
+    max_sequence_length: 512
+    normalize_embeddings: true
+    description: E5 large model (high quality, more resources required)
+    language: en
+    version: 1.0
+
+  - name: jina-embeddings-v2-base-en
+    model_id: jinaai/jina-embeddings-v2-base-en
+    model_type: sentence_transformer
+    dimension: 768
+    device: cuda:0
+    max_sequence_length: 512
+    normalize_embeddings: true
+    description: Jina AI's base English embeddings model
+    language: en
+    version: 1.0
+
+  - name: bge-small-en
+    model_id: BAAI/bge-small-en
+    model_type: sentence_transformer
+    dimension: 384
+    device: cuda:0
+    max_sequence_length: 512
+    normalize_embeddings: true
+    description: BGE small English model (good balance of speed and quality)
+    language: en
+    version: 1.0
+
+  - name: bge-small-tr
+    model_id: BAAI/bge-small-tr
+    model_type: sentence_transformer
+    dimension: 384
+    device: cuda:1
+    max_sequence_length: 512
+    normalize_embeddings: true
+    description: BGE small Turkish model
+    language: tr
+    version: 1.0
+
+  - name: instructor-large
+    model_id: hkunlp/instructor-large
+    model_type: sentence_transformer
+    dimension: 768
+    device: cuda:0
+    max_sequence_length: 512
+    normalize_embeddings: true
+    description: Instruction-tuned embedding model
+    language: en
+    version: 1.0
+
+  - name: nomic-embed-text-v1.5
+    model_id: nomic-ai/nomic-embed-text-v1.5
+    model_type: sentence_transformer
+    dimension: 768
+    device: cuda:0
+    max_sequence_length: 8192
+    normalize_embeddings: true
+    description: Nomic AI embedding model with 8K context
+    language: en
+    version: 1.0
+
+  - name: cpu-model
+    model_id: sentence-transformers/all-MiniLM-L6-v2
+    model_type: sentence_transformer
+    dimension: 384
+    device: cpu
+    max_sequence_length: 256
+    normalize_embeddings: true
+    description: CPU fallback model for environments without GPU
+    language: en
+    version: 1.0
