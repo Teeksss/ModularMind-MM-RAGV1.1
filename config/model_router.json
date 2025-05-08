@@ -1,0 +1,18 @@
+{
+  "default_model_id": "text-embedding-3-small",
+  "language_models": {
+    "en": "text-embedding-3-small",
+    "tr": "all-MiniLM-L6-v2"
+  },
+  "domain_models": {
+    "finance": "text-embedding-3-small",
+    "legal": "text-embedding-3-large",
+    "medical": "text-embedding-3-large",
+    "tech": "all-MiniLM-L6-v2"
+  },
+  "fallback_model_id": "text-embedding-3-small",
+  "enable_auto_routing": true,
+  "enable_ensemble": true,
+  "ensemble_method": "weighted_average",
+  "result_aggregation": "weighted_average"
+}

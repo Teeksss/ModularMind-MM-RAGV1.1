@@ -1,258 +1,252 @@
 import React, { useState, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FaUpload, FaImage, FaTrash, FaSpinner } from 'react-icons/fa';
-import { apiService } from '../../services/api';
+import { FiImage, FiUpload, FiX, FiVideo, FiMic } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import Button from '@/components/common/Button';
+import { useNotificationStore } from '@/store/notificationStore';
 
 interface ImageUploaderProps {
-  onEmbeddingGenerated?: (embedding: number[], modelName: string) => void;
-  onSimilarityGenerated?: (similarityScores: number[]) => void;
-  onError?: (error: string) => void;
+  onImageSelect: (file: File, preview: string) => void;
+  onImageClear?: () => void;
+  acceptedTypes?: string;
+  maxSizeMB?: number;
+  previewURL?: string;
   className?: string;
-  multimodalModel?: string;
+  label?: string;
+  showPreview?: boolean;
+  multiple?: boolean;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
-  onEmbeddingGenerated,
-  onSimilarityGenerated,
-  onError,
+  onImageSelect,
+  onImageClear,
+  acceptedTypes = 'image/*,video/*,audio/*',
+  maxSizeMB = 10,
+  previewURL,
   className = '',
-  multimodalModel
+  label = 'Dosya Yükle',
+  showPreview = true,
+  multiple = false,
 }) => {
-  const { t } = useTranslation();
+  const [dragActive, setDragActive] = useState(false);
+  const [preview, setPreview] = useState<string | null>(previewURL || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [similarityText, setSimilarityText] = useState<string>('');
-  const [similarityMode, setSimilarityMode] = useState<boolean>(false);
+  const { addNotification } = useNotificationStore();
 
-  // Handle file selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      
-      // Validate file is an image
-      if (!file.type.startsWith('image/')) {
-        if (onError) onError(t('multimodal.invalidImageFile'));
-        return;
-      }
-      
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        if (onError) onError(t('multimodal.imageTooLarge'));
-        return;
-      }
-      
-      setSelectedImage(file);
-      setPreviewUrl(URL.createObjectURL(file));
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    // Dosya boyutu kontrolü
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      addNotification({
+        id: Date.now().toString(),
+        title: 'Dosya Çok Büyük',
+        message: `Dosya boyutu ${maxSizeMB}MB'den küçük olmalıdır.`,
+        type: 'error',
+      });
+      return;
+    }
+    
+    // Dosya tipi kontrolü
+    if (!file.type.match(acceptedTypes.replace(/\*/g, '.*'))) {
+      addNotification({
+        id: Date.now().toString(),
+        title: 'Desteklenmeyen Dosya Tipi',
+        message: `Lütfen geçerli bir dosya yükleyin (${acceptedTypes}).`,
+        type: 'error',
+      });
+      return;
+    }
+    
+    // Dosya için önizleme oluştur
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setPreview(result);
+      onImageSelect(file, result);
+    };
+    
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
     }
   };
 
-  // Trigger file input click
-  const handleUploadClick = () => {
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      // Dosya tipine göre işlem yap
+      const file = e.dataTransfer.files[0];
+      
+      // Dosya boyutu kontrolü
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        addNotification({
+          id: Date.now().toString(),
+          title: 'Dosya Çok Büyük',
+          message: `Dosya boyutu ${maxSizeMB}MB'den küçük olmalıdır.`,
+          type: 'error',
+        });
+        return;
+      }
+      
+      // Dosya tipi kontrolü
+      if (!file.type.match(acceptedTypes.replace(/\*/g, '.*'))) {
+        addNotification({
+          id: Date.now().toString(),
+          title: 'Desteklenmeyen Dosya Tipi',
+          message: `Lütfen geçerli bir dosya yükleyin (${acceptedTypes}).`,
+          type: 'error',
+        });
+        return;
+      }
+      
+      // Dosya için önizleme oluştur
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setPreview(result);
+        onImageSelect(file, result);
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Clear selected image
-  const handleClearImage = () => {
-    setSelectedImage(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+  const handleClear = () => {
+    setPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    if (onImageClear) {
+      onImageClear();
     }
   };
 
-  // Generate embedding from the image
-  const handleGenerateEmbedding = async () => {
-    if (!selectedImage) {
-      if (onError) onError(t('multimodal.noImageSelected'));
-      return;
+  // Dosya türüne göre icon belirleme
+  const renderIcon = () => {
+    if (!preview) return <FiUpload size={24} />;
+    
+    if (preview.startsWith('data:image')) {
+      return <FiImage size={24} />;
+    } else if (preview.startsWith('data:video')) {
+      return <FiVideo size={24} />;
+    } else if (preview.startsWith('data:audio')) {
+      return <FiMic size={24} />;
     }
-
-    setIsLoading(true);
-
-    try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', selectedImage);
-      
-      if (multimodalModel) {
-        formData.append('model', multimodalModel);
-      }
-      
-      // Send request to generate embedding
-      const response = await apiService.upload('/multimodal/image-upload', formData);
-      
-      // Call callback with embedding
-      if (onEmbeddingGenerated) {
-        onEmbeddingGenerated(response.data.embeddings[0], response.data.model);
-      }
-      
-    } catch (error) {
-      console.error('Error generating image embedding:', error);
-      if (onError) onError(error.message || t('multimodal.embeddingError'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Compute similarity between image and text
-  const handleComputeSimilarity = async () => {
-    if (!selectedImage) {
-      if (onError) onError(t('multimodal.noImageSelected'));
-      return;
-    }
-
-    if (!similarityText.trim()) {
-      if (onError) onError(t('multimodal.noTextEntered'));
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Convert image to base64
-      const base64Image = await fileToBase64(selectedImage);
-      
-      // Send request to compute similarity
-      const response = await apiService.post('/multimodal/similarity', {
-        image_data: base64Image,
-        texts: similarityText.trim(),
-        model: multimodalModel
-      });
-      
-      // Call callback with similarity scores
-      if (onSimilarityGenerated) {
-        onSimilarityGenerated(response.data.similarities);
-      }
-      
-    } catch (error) {
-      console.error('Error computing similarity:', error);
-      if (onError) onError(error.message || t('multimodal.similarityError'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  // Toggle between embedding and similarity modes
-  const toggleSimilarityMode = () => {
-    setSimilarityMode(!similarityMode);
+    
+    return <FiUpload size={24} />;
   };
 
   return (
-    <div className={`image-uploader ${className}`}>
-      {/* Mode toggle */}
-      <div className="flex justify-end mb-2">
-        <button
-          type="button"
-          onClick={toggleSimilarityMode}
-          className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          {similarityMode ? t('multimodal.switchToEmbedding') : t('multimodal.switchToSimilarity')}
-        </button>
-      </div>
-
-      {/* Image selection area */}
-      <div className="mb-4">
-        <div 
-          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer
-            ${previewUrl ? 'border-green-500' : 'border-gray-300 hover:border-blue-500'}
-            dark:border-gray-600 dark:hover:border-blue-400 transition-colors
-            flex flex-col items-center justify-center min-h-[200px]`}
-          onClick={handleUploadClick}
-        >
-          {previewUrl ? (
-            <div className="relative w-full h-full">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="max-h-[200px] mx-auto object-contain"
-              />
-              <button
-                type="button"
+    <div className={`flex flex-col ${className}`}>
+      <input
+        type="file"
+        onChange={handleFileChange}
+        accept={acceptedTypes}
+        ref={fileInputRef}
+        className="hidden"
+        multiple={multiple}
+      />
+      
+      <div
+        className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center transition-colors ${
+          dragActive 
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+            : 'border-gray-300 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600'
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+        onClick={handleButtonClick}
+        style={{ minHeight: '200px', cursor: 'pointer' }}
+      >
+        <AnimatePresence mode="wait">
+          {showPreview && preview ? (
+            <motion.div
+              key="preview"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full flex flex-col items-center"
+            >
+              {preview.startsWith('data:image') ? (
+                <img 
+                  src={preview} 
+                  alt="Preview" 
+                  className="max-h-40 max-w-full object-contain rounded mb-2" 
+                />
+              ) : preview.startsWith('data:video') ? (
+                <video 
+                  src={preview} 
+                  controls 
+                  className="max-h-40 max-w-full object-contain rounded mb-2" 
+                />
+              ) : preview.startsWith('data:audio') ? (
+                <audio 
+                  src={preview} 
+                  controls 
+                  className="max-w-full mb-2" 
+                />
+              ) : (
+                <div className="flex items-center justify-center h-32 w-32 bg-gray-100 dark:bg-gray-800 rounded mb-2">
+                  {renderIcon()}
+                </div>
+              )}
+              
+              <Button
+                size="sm"
+                variant="danger"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleClearImage();
+                  handleClear();
                 }}
-                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                title={t('multimodal.removeImage')}
+                className="mt-2"
               >
-                <FaTrash size={12} />
-              </button>
-            </div>
+                <FiX size={16} className="mr-1" /> Kaldır
+              </Button>
+            </motion.div>
           ) : (
-            <>
-              <FaImage className="text-gray-400 text-4xl mb-2" />
-              <p className="text-gray-500 dark:text-gray-400 mb-2">{t('multimodal.dropImageHere')}</p>
-              <button
-                type="button"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded inline-flex items-center"
-              >
-                <FaUpload className="mr-2" />
-                {t('multimodal.uploadImage')}
-              </button>
-            </>
+            <motion.div
+              key="upload"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center text-center p-4"
+            >
+              <div className="mb-4 p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500">
+                {renderIcon()}
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 mb-2 font-medium">{label}</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Dosyayı buraya sürükleyin veya tıklayarak seçin
+              </p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
+                Desteklenen formatlar: {acceptedTypes.replace(/\*/g, '')}
+              </p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs">
+                Maksimum dosya boyutu: {maxSizeMB}MB
+              </p>
+            </motion.div>
           )}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-      </div>
-
-      {/* Similarity text input (if in similarity mode) */}
-      {similarityMode && (
-        <div className="mb-4">
-          <label htmlFor="similarity-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('multimodal.enterTextForSimilarity')}
-          </label>
-          <textarea
-            id="similarity-text"
-            value={similarityText}
-            onChange={(e) => setSimilarityText(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-            rows={3}
-            placeholder={t('multimodal.textPlaceholder')}
-          />
-        </div>
-      )}
-
-      {/* Action button */}
-      <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={similarityMode ? handleComputeSimilarity : handleGenerateEmbedding}
-          disabled={!selectedImage || isLoading}
-          className={`font-medium py-2 px-6 rounded inline-flex items-center
-            ${!selectedImage || isLoading
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-              : 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800'
-            }`}
-        >
-          {isLoading ? (
-            <>
-              <FaSpinner className="animate-spin mr-2" />
-              {t('common.loading')}
-            </>
-          ) : (
-            <>
-              {similarityMode ? t('multimodal.computeSimilarity') : t('multimodal.generateEmbedding')}
-            </>
-          )}
-        </button>
+        </AnimatePresence>
       </div>
     </div>
   );

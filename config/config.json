@@ -1,0 +1,42 @@
+{
+  "platform": {
+    "name": "ModularMind RAG Platform",
+    "version": "1.0.0",
+    "description": "Modern Retrieval-Augmented Generation platformu"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "log_level": "INFO",
+    "cors_origins": ["*"],
+    "static_folder": "./static"
+  },
+  "auth": {
+    "require_auth": true,
+    "token_expiry_days": 30
+  },
+  "embeddings": {
+    "default_chunk_size": 500,
+    "default_chunk_overlap": 50,
+    "default_model": "text-embedding-3-small",
+    "auto_routing": true,
+    "enable_ensemble": true,
+    "ensemble_method": "weighted_average"
+  },
+  "llm": {
+    "default_model": "gpt-4o",
+    "cache_results": true,
+    "default_system_message": "Sen yardımcı bir asistansın."
+  },
+  "rag": {
+    "default_context_limit": 5,
+    "highlight_matches": true,
+    "default_search_type": "hybrid"
+  },
+  "storage": {
+    "vector_store_path": "./data/vector_store",
+    "cache_path": "./data/cache",
+    "enable_backup": true,
+    "backup_interval_hours": 24
+  }
+}

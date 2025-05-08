@@ -1,0 +1,149 @@
+/**
+ * Erişilebilirlik CSS Ayarları
+ * Bu dosya, erişilebilirlik ihtiyaçları için özel CSS değişkenlerini ve stillerini içerir.
+ */
+
+:root {
+  /* Metin boyutu çarpanı varsayılan olarak 1 (normal boyut) */
+  --text-size-multiplier: 1;
+}
+
+/* Metin boyutu ayarları */
+body {
+  font-size: calc(1rem * var(--text-size-multiplier));
+}
+
+/* Yüksek kontrast modu */
+.high-contrast {
+  /* Arka plan ve metinler için yüksek kontrast */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f1f5f9;
+  --color-text-primary: #000000;
+  --color-text-secondary: #1f2937;
+  
+  /* Vurgu renkleri için daha yüksek kontrast */
+  --color-primary: #0045a5;
+  --color-primary-hover: #003380;
+  --color-accent: #9c0000;
+  
+  /* Bağlantılar için alt çizgi ekle */
+  a {
+    text-decoration: underline;
+  }
+  
+  /* Odak durumu daha belirgin */
+  button:focus,
+  a:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 3px solid #0045a5;
+    outline-offset: 2px;
+  }
+  
+  /* Koyu tema */
+  &.dark {
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a1a;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #e2e8f0;
+    
+    --color-primary: #4990ff;
+    --color-primary-hover: #6ea8ff;
+    --color-accent: #ff6b6b;
+  }
+}
+
+/* Animasyonları azalt */
+.reduce-motion {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Belirli animasyonlu öğeleri gizle veya statik göster */
+  .animated-bg {
+    background: var(--color-bg-secondary) !important;
+    animation: none !important;
+  }
+  
+  /* Kaydırma animasyonlarını devre dışı bırak */
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Odak halkası görünürlüğü */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Odak halkası görünürlüğü kapalıysa */
+:not(.focus-visible) :focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Ekran okuyucu aracılığı */
+.screen-reader-text {
+  border: 0;
+  clip: rect(1px, 1px, 1px, 1px);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  word-wrap: normal !important;
+}
+
+.screen-reader-mode {
+  /* Ekstra ekran okuyucu açıklamaları için kullanılabilecek içerikleri göster */
+  .sr-description {
+    display: block;
+  }
+  
+  /* Görsel öğeler için ek metin etiketleri */
+  .image-caption::before {
+    content: "Görsel: ";
+    font-weight: bold;
+  }
+  
+  /* Form elemanları için ek açıklamalar */
+  .form-hint {
+    display: block;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Ekran okuyuculardan gizle ancak görünür kal */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* Skip Link - ekran klavuzları için erişilebilir atlama linki */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--color-primary);
+  color: white;
+  padding: 8px;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}

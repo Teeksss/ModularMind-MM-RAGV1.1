@@ -1,50 +1,31 @@
-# Multi-stage build for frontend
+# Yapım aşaması
+FROM node:18-alpine AS builder
 
-# ============= Build Stage =============
-FROM node:18-alpine as build
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Bağımlılıkları kopyala ve kur
 COPY package.json package-lock.json ./
-
-# Install dependencies
 RUN npm ci
 
-# Copy the rest of the code
+# Kaynak kodları kopyala
 COPY . .
 
-# Set environment variables for build
-ARG API_URL
-ENV VITE_API_URL=${API_URL}
-ENV NODE_ENV=production
-
-# Build the application
+# Uygulamayı derle
 RUN npm run build
 
-# ============= Runtime Stage =============
+# Çalışma aşaması
 FROM nginx:alpine
 
-# Copy nginx configuration
-COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+# Nginx yapılandırması
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built assets from build stage
-COPY --from=build /app/dist /usr/share/nginx/html
+# Builder aşamasından derlenen dosyaları kopyala
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Add runtime environment configuration script
-COPY nginx/env.sh /docker-entrypoint.d/40-env.sh
-RUN chmod +x /docker-entrypoint.d/40-env.sh
+# Sağlık kontrolü
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
-# Copy env.template used by above script
-COPY nginx/env.template.js /usr/share/nginx/html/env.template.js
-RUN touch /usr/share/nginx/html/env.js
-
-# Expose port
 EXPOSE 80
 
-# Set user to non-root for better security
-USER nginx
-
-# Command to start nginx
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,55 @@
+# .coveragerc - Coverage.py konfigürasyon dosyası
+
+[run]
+# Ölçülecek kaynak
+source =
+    ModularMind
+
+# Dahil edilecek dosyalar
+include =
+    ModularMind/API/*.py
+    ModularMind/API/core/*.py
+    ModularMind/API/models/*.py
+    ModularMind/API/services/*.py
+    ModularMind/API/v1/endpoints/*.py
+    ModularMind/API/v2/endpoints/*.py
+
+# Hariç tutulacak dosyalar
+omit =
+    */tests/*
+    */migrations/*
+    */config.py
+    */conftest.py
+    */__init__.py
+    */setup.py
+    */wsgi.py
+    */asgi.py
+    */.venv/*
+    */env/*
+    */venv/*
+
+# Ölçülecek dizinler
+branch = True
+concurrency = multiprocessing
+
+[report]
+# Rapor çıktı formatı
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+
+precision = 2
+show_missing = True
+
+# Minimum kapsama yüzdesi (pipeline fail için)
+fail_under = 80
+
+[xml]
+output = coverage.xml
+
+[html]
+directory = htmlcov

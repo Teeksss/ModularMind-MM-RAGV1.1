@@ -1,0 +1,21 @@
+{
+  "index_type": "HNSW",
+  "dimensions": {
+    "text-embedding-3-small": 1536,
+    "text-embedding-3-large": 3072,
+    "all-MiniLM-L6-v2": 384
+  },
+  "metric": "cosine",
+  "storage_path": "./data/vector_store",
+  "hnsw_params": {
+    "M": 16,
+    "ef_construction": 200,
+    "ef_search": 50
+  },
+  "default_embedding_model": "text-embedding-3-small",
+  "embedding_models": [
+    "text-embedding-3-small",
+    "text-embedding-3-large",
+    "all-MiniLM-L6-v2"
+  ]
+}

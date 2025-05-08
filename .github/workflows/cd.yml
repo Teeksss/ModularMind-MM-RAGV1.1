@@ -1,0 +1,66 @@
+name: ModularMind CD
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/${{ github.repository }}/modularmind
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          latest
+    
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+    
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: ${{ secrets.KNOWN_HOSTS }}
+    
+    - name: Deploy to production
+      run: |
+        # Update version in .env file
+        RELEASE_VERSION=${GITHUB_REF#refs/tags/}
+        
+        # Create deployment scripts
+        cat > deploy.sh << 'EOL'
+        #!/bin/bash
+        cd /opt/modularmind
+        echo "MODULARMIND_VERSION=${RELEASE_VERSION}" > .env
+        docker-compose pull
+        docker-compose up -d
+        docker system prune -af
+        EOL
+        
+        # Transfer and execute deployment script
+        chmod +x deploy.sh
+        scp deploy.sh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/
+        ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "bash /tmp/deploy.sh"

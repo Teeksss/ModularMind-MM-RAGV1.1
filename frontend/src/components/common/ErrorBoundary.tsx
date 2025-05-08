@@ -1,89 +1,81 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { FiAlertTriangle } from 'react-icons/fi';
+import Button from './Button';
 
-interface Props {
+interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
-  errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      error,
+    };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    this.setState({
-      error,
-      errorInfo
-    });
-    
-    // Call onError callback if provided
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    
-    // Log error to monitoring service
-    console.error('Error caught by ErrorBoundary:', error, errorInfo);
-    
-    // Report to error monitoring service if available
-    if (window.Sentry) {
-      window.Sentry.captureException(error);
-    }
   }
+
+  resetError = (): void => {
+    this.setState({
+      hasError: false,
+      error: null,
+    });
+  };
 
   render(): ReactNode {
     if (this.state.hasError) {
-      // Render custom fallback UI if provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      
-      // Default error UI
+
       return (
-        <div className="min-h-[400px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12 rounded-lg">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow rounded-lg p-8">
-            <div className="flex justify-center">
-              <FaExclamationTriangle className="h-12 w-12 text-red-500" />
+        <div className="p-6 max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md mt-8 border border-red-200 dark:border-red-800">
+          <div className="flex items-center text-red-500 mb-4">
+            <FiAlertTriangle size={24} className="mr-2" />
+            <h2 className="text-xl font-semibold">Bir hata oluştu</h2>
+          </div>
+          
+          <div className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="mb-2">Uygulama beklenmeyen bir hata ile karşılaştı.</p>
+            <div className="bg-gray-100 dark:bg-gray-900 p-3 rounded text-sm font-mono overflow-auto max-h-40">
+              {this.state.error?.message || 'Bilinmeyen hata'}
             </div>
-            <div className="mt-4 text-center">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Something went wrong
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                We're sorry, but something unexpected happened.
-              </p>
-              {this.state.error && (
-                <div className="mt-4 p-4 bg-red-50 dark:bg-red-900 dark:bg-opacity-20 rounded-md">
-                  <p className="text-sm text-red-800 dark:text-red-300 text-left">
-                    {this.state.error.toString()}
-                  </p>
-                </div>
-              )}
-              <div className="mt-6">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Refresh page
-                </button>
-              </div>
-            </div>
+          </div>
+          
+          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+            <Button 
+              onClick={this.resetError} 
+              variant="primary"
+            >
+              Tekrar Dene
+            </Button>
+            <Button 
+              onClick={() => window.location.href = '/'}
+              variant="secondary"
+            >
+              Ana Sayfaya Dön
+            </Button>
           </div>
         </div>
       );

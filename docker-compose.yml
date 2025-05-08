@@ -1,124 +1,89 @@
 version: '3.8'
 
 services:
-  # API Service
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    image: modular-mind-api:1.1
-    container_name: modular-mind-api
     ports:
       - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/modularmind
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=${JWT_SECRET:-changeme_in_production}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - VECTOR_DB_TYPE=${VECTOR_DB_TYPE:-faiss}
+      - VECTOR_DB_URL=${VECTOR_DB_URL}
+      - VECTOR_DB_API_KEY=${VECTOR_DB_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MODEL_CACHE_DIR=/app/data/models
     volumes:
       - ./data:/app/data
-      - ./config:/app/config
-    environment:
-      - ENVIRONMENT=production
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/modularmind
-      - EMBEDDING_SERVICE_URL=http://embedding-service:8001
-      - LOG_LEVEL=INFO
-      - METRICS_ENABLED=true
     depends_on:
       - db
-      - embedding-service
+      - redis
     restart: unless-stopped
-    networks:
-      - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Embedding Service
-  embedding-service:
-    build:
-      context: ./embedding-service
-      dockerfile: Dockerfile
-    image: modular-mind-embedding:1.1
-    container_name: modular-mind-embedding
-    ports:
-      - "8001:8001"
-    volumes:
-      - ./models:/app/models
-      - ./config:/app/config
-    environment:
-      - LOG_LEVEL=INFO
-      - MAX_CONCURRENT_REQUESTS=10
-      - PRELOAD_MODELS=all-MiniLM-L6-v2,paraphrase-multilingual-MiniLM-L12-v2
-    restart: unless-stopped
-    networks:
-      - app-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-  # Frontend
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - API_URL=http://localhost:8000
-    image: modular-mind-frontend:1.1
-    container_name: modular-mind-frontend
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
-      - "80:80"
-    restart: unless-stopped
+      - "3000:80"
     depends_on:
       - api
-    networks:
-      - app-network
+    restart: unless-stopped
 
-  # Database
   db:
     image: postgres:14-alpine
-    container_name: modular-mind-db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=modularmind
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Redis for caching and background tasks
   redis:
-    image: redis:7-alpine
-    container_name: modular-mind-redis
-    ports:
-      - "6379:6379"
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
     restart: unless-stopped
-    networks:
-      - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 500M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Prometheus
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:latest
-    container_name: modular-mind-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus:/etc/prometheus
+      - ./config/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -126,58 +91,9 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     restart: unless-stopped
-    networks:
-      - app-network
-
-  # Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: modular-mind-grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    restart: unless-stopped
-    depends_on:
-      - prometheus
-    networks:
-      - app-network
-
-  # Node Exporter for host metrics
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: modular-mind-node-exporter
-    restart: unless-stopped
-    ports:
-      - "9100:9100"
-    networks:
-      - app-network
-
-  # Alert Manager
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: modular-mind-alertmanager
-    ports:
-      - "9093:9093"
-    volumes:
-      - ./monitoring/alertmanager:/etc/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
-    restart: unless-stopped
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
 
 volumes:
   postgres_data:
-  prometheus_data:
+  redis_data:
   grafana_data:
+  prometheus_data:

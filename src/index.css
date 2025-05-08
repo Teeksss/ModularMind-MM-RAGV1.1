@@ -1,0 +1,67 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  html {
+    font-family: 'Inter var', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+  
+  /* Reset focus outline for all elements */
+  * {
+    @apply focus:outline-none;
+  }
+  
+  /* Custom focus styles */
+  .focus-ring {
+    @apply focus:ring-2 focus:ring-primary-600 focus:ring-offset-2;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:ring-primary-500;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  
+  .card {
+    @apply bg-white shadow rounded-lg overflow-hidden;
+  }
+  
+  .form-input {
+    @apply block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}

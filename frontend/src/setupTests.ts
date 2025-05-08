@@ -1,70 +1,57 @@
-// jest-dom adds custom jest matchers for asserting on DOM nodes.
-// allows you to do things like:
-// expect(element).toHaveTextContent(/react/i)
-// learn more: https://github.com/testing-library/jest-dom
+// jest-dom, DOM node'ları için custom jest matchers ekler
 import '@testing-library/jest-dom';
 
-// Mock matchMedia
-window.matchMedia = window.matchMedia || function() {
-  return {
-    matches: false,
-    addListener: function() {},
-    removeListener: function() {},
-    addEventListener: function() {},
-    removeEventListener: function() {},
-    dispatchEvent: function() {
-      return true;
-    },
-  };
-};
+// Mock Service Worker'ı başlat
+import { server } from './mocks/server';
 
-// Mock IntersectionObserver
-const mockIntersectionObserver = jest.fn();
-mockIntersectionObserver.mockReturnValue({
-  observe: () => null,
-  unobserve: () => null,
-  disconnect: () => null
-});
-window.IntersectionObserver = mockIntersectionObserver;
+// Testleri yalıtmak için MSW'yi kuruyoruz
+beforeAll(() => server.listen());
+// Her testten sonra işleyicileri sıfırla
+afterEach(() => server.resetHandlers());
+// Testler bittiğinde sunucuyu kapat
+afterAll(() => server.close());
 
-// Mock resize observer
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-window.ResizeObserver = ResizeObserverMock;
-
-// Mock fetch
-global.fetch = jest.fn();
-
-// Define a global localStorage mock
-const localStorageMock = (function() {
+// LocalStorage mock
+const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: function(key: string) {
-      return store[key] || null;
-    },
-    setItem: function(key: string, value: string) {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
       store[key] = value.toString();
     },
-    removeItem: function(key: string) {
+    removeItem: (key: string) => {
       delete store[key];
     },
-    clear: function() {
+    clear: () => {
       store = {};
     }
   };
 })();
 
 Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
+  value: localStorageMock,
 });
 
-// Optional: Define a mock Sentry
-window.Sentry = {
-  captureException: jest.fn(),
-  captureMessage: jest.fn(),
-  withScope: jest.fn((callback) => callback({ setTag: jest.fn() }))
+// IntersectionObserver mock
+global.IntersectionObserver = class IntersectionObserver {
+  constructor(callback: IntersectionObserverCallback) {}
+  observe() { return null; }
+  unobserve() { return null; }
+  disconnect() { return null; }
+};
+
+// Çeviri fonksiyonu mock (i18n için)
+global.i18n = (key: string) => key;
+
+// Konsol hata uyarılarını bastır
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  if (
+    typeof args[0] === 'string' && 
+    (args[0].includes('Warning: An update to') || 
+     args[0].includes('Warning: React does not recognize'))
+  ) {
+    return;
+  }
+  originalConsoleError(...args);
 };

@@ -1,0 +1,106 @@
+{
+  "models": [
+    {
+      "id": "text-embedding-3-small",
+      "name": "OpenAI Text Embedding 3 Small",
+      "provider": "openai",
+      "model_id": "text-embedding-3-small",
+      "dimensions": 1536,
+      "api_key_env": "OPENAI_API_KEY",
+      "options": {
+        "encoding_format": "float"
+      }
+    },
+    {
+      "id": "text-embedding-3-large",
+      "name": "OpenAI Text Embedding 3 Large",
+      "provider": "openai",
+      "model_id": "text-embedding-3-large",
+      "dimensions": 3072,
+      "api_key_env": "OPENAI_API_KEY",
+      "options": {
+        "encoding_format": "float"
+      }
+    },
+    {
+      "id": "multilingual-e5-large",
+      "name": "E5 Large Multilingual",
+      "provider": "huggingface",
+      "model_id": "intfloat/multilingual-e5-large",
+      "dimensions": 1024,
+      "options": {
+        "normalize_embeddings": true
+      }
+    },
+    {
+      "id": "all-MiniLM-L6-v2",
+      "name": "MiniLM-L6-v2",
+      "provider": "local",
+      "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+      "dimensions": 384,
+      "options": {
+        "device": "cpu"
+      }
+    },
+    {
+      "id": "embed-english-v3.0",
+      "name": "Cohere English V3.0",
+      "provider": "cohere",
+      "model_id": "embed-english-v3.0",
+      "dimensions": 1024,
+      "api_key_env": "COHERE_API_KEY",
+      "options": {
+        "input_type": "search_document"
+      }
+    },
+    {
+      "id": "embed-multilingual-v3.0",
+      "name": "Cohere Multilingual V3.0",
+      "provider": "cohere",
+      "model_id": "embed-multilingual-v3.0",
+      "dimensions": 1024,
+      "api_key_env": "COHERE_API_KEY",
+      "options": {
+        "input_type": "search_document"
+      }
+    }
+  ],
+  "default_model": "text-embedding-3-small",
+  "cache": {
+    "enabled": true,
+    "max_size": 50000,
+    "ttl": 86400,
+    "persistent": true,
+    "persistent_path": "./data/cache/embeddings"
+  },
+  "model_router": {
+    "enable_auto_routing": true,
+    "enable_ensemble": true,
+    "ensemble_method": "weighted_average",
+    "language_models": {
+      "en": "text-embedding-3-small",
+      "de": "multilingual-e5-large",
+      "fr": "multilingual-e5-large",
+      "es": "multilingual-e5-large",
+      "it": "multilingual-e5-large",
+      "tr": "embed-multilingual-v3.0",
+      "ru": "embed-multilingual-v3.0",
+      "ja": "embed-multilingual-v3.0",
+      "zh": "embed-multilingual-v3.0"
+    },
+    "domain_models": {
+      "legal": "text-embedding-3-large",
+      "medical": "text-embedding-3-large",
+      "finance": "text-embedding-3-small",
+      "tech": "embed-english-v3.0"
+    },
+    "model_weights": {
+      "text-embedding-3-large": 1.2,
+      "text-embedding-3-small": 1.0,
+      "multilingual-e5-large": 1.0,
+      "embed-english-v3.0": 0.9,
+      "embed-multilingual-v3.0": 0.9,
+      "all-MiniLM-L6-v2": 0.8
+    }
+  }
+}
