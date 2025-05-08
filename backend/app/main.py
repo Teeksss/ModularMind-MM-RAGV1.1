@@ -1,12 +1,14 @@
 import logging
 import time
+import os
+from pathlib import Path
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import prometheus_client
 from prometheus_client import Counter, Histogram, Gauge, multiprocess, CollectorRegistry
-import os
 
 from app.core.settings import get_settings
 from app.api.v1.api import api_router
@@ -14,16 +16,27 @@ from app.db.init_db import init_db
 from app.services.vector_store import init_vector_store
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.metrics_middleware import MetricsMiddleware
+from app.middleware.rate_limiter import RateLimiterMiddleware
+from app.core.security import CSRFMiddleware
 
 settings = get_settings()
 
-# Configure logging
+# Ensure log directory exists
+log_dir = Path("/var/log/modularmind")
+log_dir.mkdir(parents=True, exist_ok=True)
+
+# Configure logging with rotation
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(f"/var/log/modularmind/app.log")
+        logging.handlers.RotatingFileHandler(
+            filename=log_dir / "app.log",
+            maxBytes=10485760,  # 10MB
+            backupCount=5,
+            encoding="utf-8"
+        )
     ]
 )
 
@@ -31,128 +44,86 @@ logger = logging.getLogger(__name__)
 
 # Set up Prometheus metrics
 request_counter = Counter('http_requests_total', 'Total HTTP Requests', ['method', 'endpoint', 'status'])
-request_duration = Histogram('http_request_duration_seconds', 'HTTP Request Duration', ['method', 'endpoint'])
-active_requests = Gauge('http_active_requests', 'Number of active HTTP requests')
+request_latency = Histogram('http_request_duration_seconds', 'HTTP Request Latency', ['method', 'endpoint'])
+active_connections = Gauge('http_active_connections', 'Number of active connections')
 
-# Start-up and shutdown events
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("Starting up ModularMind MM-RAG v1.1 API...")
-    
-    # Initialize multiprocess prometheus metrics if enabled
-    if settings.metrics.metrics_enabled:
-        logger.info("Initializing Prometheus metrics...")
-        if 'PROMETHEUS_MULTIPROC_DIR' in os.environ:
-            registry = CollectorRegistry()
-            multiprocess.MultiProcessCollector(registry)
-        else:
-            logger.warning("PROMETHEUS_MULTIPROC_DIR not set - metrics may not work correctly in multiprocess environment")
-    
-    # Initialize database
-    logger.info("Initializing database connection...")
-    await init_db()
-    
-    # Initialize vector store
-    logger.info("Initializing vector store...")
-    init_vector_store()
-    
-    logger.info("Application startup complete")
-    
-    yield
-    
-    # Shutdown
-    logger.info("Shutting down ModularMind MM-RAG v1.1 API...")
-
-
-# Create FastAPI application
 app = FastAPI(
     title="ModularMind MM-RAG API",
-    description="Modular Retrieval-Augmented Generation API",
+    description="Modern RAG Platform API",
     version="1.1.0",
-    lifespan=lifespan
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
 )
 
-# Add CORS middleware
+# Security Middleware
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=settings.ALLOWED_HOSTS
+)
+
+app.add_middleware(CSRFMiddleware)
+app.add_middleware(RateLimiterMiddleware)
+
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.security.cors_origins,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add metrics middleware if enabled
-if settings.metrics.metrics_enabled:
-    app.add_middleware(
-        MetricsMiddleware,
-        request_counter=request_counter,
-        request_duration=request_duration,
-        active_requests=active_requests
-    )
-
-# Add logging middleware
+# Custom middleware
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(MetricsMiddleware)
 
-# Include API router
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        # Initialize database
+        await init_db()
+        # Initialize vector store
+        await init_vector_store()
+        logger.info("Application startup completed successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize application: {str(e)}")
+        raise
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Application shutting down")
+
+# Include routers
 app.include_router(api_router, prefix="/api/v1")
 
-# Root endpoint
-@app.get("/")
-async def root():
-    return {
-        "name": "ModularMind MM-RAG API",
-        "version": "1.1.0",
-        "status": "active"
-    }
-
-# Health check endpoint
-@app.get("/health")
-async def health():
-    return {
-        "status": "ok",
-        "timestamp": time.time(),
-        "version": "1.1.0"
-    }
-
-# Metrics endpoint
-@app.get("/metrics")
-async def metrics():
-    if not settings.metrics.metrics_enabled:
-        return JSONResponse(
-            status_code=404,
-            content={"detail": "Metrics not enabled"}
-        )
-    
-    registry = prometheus_client.REGISTRY
-    if 'PROMETHEUS_MULTIPROC_DIR' in os.environ:
-        registry = CollectorRegistry()
-        multiprocess.MultiProcessCollector(registry)
-    
-    return Response(
-        content=prometheus_client.generate_latest(registry),
-        media_type="text/plain"
-    )
-
-# Exception handlers
+# Error handling
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    logger.error(f"Global error handler caught: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "An unexpected error occurred",
-            "type": type(exc).__name__
+            "message": "Internal server error",
+            "detail": str(exc) if settings.DEBUG else "An unexpected error occurred"
         }
     )
 
-
 if __name__ == "__main__":
     import uvicorn
-    
     uvicorn.run(
-        "app.main:app",
-        host=settings.server.host,
-        port=settings.server.port,
-        reload=settings.server.environment == "development"
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=settings.DEBUG,
+        workers=settings.WORKERS_COUNT,
+        log_level="info"
     )
